@@ -1,4 +1,4 @@
-# Netki Wallet Name Resolver
+# Netki Java Partner Client
 
 ![JitPack Badge](https://img.shields.io/github/tag/netkicorp/java-partner-client.svg?label=JitPack)
 ![Maven Central](https://img.shields.io/maven-central/v/com.netki/netki-partner-client.svg)
