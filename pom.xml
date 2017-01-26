@@ -6,7 +6,7 @@
 
     <groupId>com.netki</groupId>
     <artifactId>netki-partner-client</artifactId>
-    <version>0.0.1</version>
+    <version>0.0.2</version>
 
     <name>Netki Partner Client</name>
     <description>Library used to access Netki's Partner API</description>
@@ -81,6 +81,16 @@
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.4</version>
+        </dependency>
+        <dependency>
+            <groupId>com.madgag.spongycastle</groupId>
+            <artifactId>pkix</artifactId>
+            <version>1.51.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>18.0</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

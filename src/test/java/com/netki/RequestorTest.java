@@ -3,24 +3,30 @@ package com.netki;
 import com.github.tomakehurst.wiremock.client.MappingBuilder;
 import com.github.tomakehurst.wiremock.http.RequestMethod;
 import com.google.api.client.http.HttpStatusCodes;
+import com.google.common.io.BaseEncoding;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.io.IOException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.SecureRandom;
+import java.security.Security;
 import java.util.*;
 
 import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import org.spongycastle.jce.ECNamedCurveTable;
+import org.spongycastle.jce.provider.BouncyCastleProvider;
+import org.spongycastle.jce.spec.ECParameterSpec;
+
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 
 @RunWith(PowerMockRunner.class)
@@ -31,12 +37,41 @@ public class RequestorTest {
     @Rule
     public WireMockRule wireMockRule = new WireMockRule(9191);
     public ObjectMapper mapper = new ObjectMapper();
+    public static KeyPair userKeyPair = null;
+
+    @BeforeClass
+    public static void setupKeys()
+    {
+        try {
+            Security.addProvider(new BouncyCastleProvider());
+            ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("secp256k1");
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("ECDSA", "SC");
+            generator.initialize(ecSpec, new SecureRandom());
+            RequestorTest.userKeyPair = generator.generateKeyPair();
+        } catch (Exception e) {
+            fail("Unable to Create Test KeyPair");
+        }
+    }
 
     public void setupHttpStub(String endpoint, RequestMethod method, int statusCode, String responseData) {
 
         stubFor(new MappingBuilder(method, urlEqualTo(endpoint))
                 .withHeader("Authorization", equalTo("api_key"))
                 .withHeader("X-Partner-ID", equalTo("partner_id"))
+                .willReturn(
+                        aResponse()
+                                .withStatus(statusCode)
+                                .withHeader("Content-Type", "application/json")
+                                .withBody(responseData)
+                )
+        );
+    }
+
+    public void setupHttpStubDistributedAccess(String endpoint, RequestMethod method, int statusCode, String responseData) {
+        stubFor(new MappingBuilder(method, urlEqualTo(endpoint))
+                .withHeader("X-Identity", equalTo(BaseEncoding.base16().encode(userKeyPair.getPublic().getEncoded())))
+                .withHeader("X-Partner-Key", equalTo("partner_ksk_hex"))
+                .withHeader("X-Partner-KeySig", equalTo("partner_ksk_sig_hex"))
                 .willReturn(
                         aResponse()
                                 .withStatus(statusCode)
@@ -56,8 +91,32 @@ public class RequestorTest {
         try {
             this.setupHttpStub("/endpoint", RequestMethod.GET, HttpStatusCodes.STATUS_CODE_OK, this.mapper.writeValueAsString(respData));
 
+            NetkiClient client = new NetkiClient("partner_id", "api_key", "http://localhost:9191");
             Requestor requestor = new Requestor();
-            String returnData = requestor.processRequest("api_key", "partner_id", "http://localhost:9191/endpoint", "GET", null);
+            String returnData = requestor.processRequest(client, "/endpoint", "GET", null);
+
+            verify(getRequestedFor(urlMatching("/endpoint")).withRequestBody(matching("")));
+
+            JsonNode assertData = this.mapper.readTree(returnData);
+            assertTrue(assertData.get("success").asBoolean());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ProcessRequest Distributed API Access
+    @Test
+    public void ProcessRequestDistributedAPIAccess()
+    {
+        Map<String, Boolean> respData = new HashMap<String, Boolean>();
+        respData.put("success", true);
+
+        try {
+            this.setupHttpStubDistributedAccess("/endpoint", RequestMethod.GET, HttpStatusCodes.STATUS_CODE_OK, this.mapper.writeValueAsString(respData));
+
+            NetkiClient client = new NetkiClient("partner_ksk_hex", "partner_ksk_sig_hex", userKeyPair, "http://localhost:9191");
+            Requestor requestor = new Requestor();
+            String returnData = requestor.processRequest(client, "/endpoint", "GET", null);
 
             verify(getRequestedFor(urlMatching("/endpoint")).withRequestBody(matching("")));
 
@@ -75,8 +134,9 @@ public class RequestorTest {
         try {
             this.setupHttpStub("/endpoint", RequestMethod.DELETE, HttpStatusCodes.STATUS_CODE_NO_CONTENT, "");
 
+            NetkiClient client = new NetkiClient("partner_id", "api_key", "http://localhost:9191");
             Requestor requestor = new Requestor();
-            String returnData = requestor.processRequest("api_key", "partner_id", "http://localhost:9191/endpoint", "DELETE", null);
+            String returnData = requestor.processRequest(client, "/endpoint", "DELETE", null);
 
             verify(deleteRequestedFor(urlMatching("/endpoint")).withRequestBody(matching("")));
             assertEquals("", returnData);
@@ -96,8 +156,9 @@ public class RequestorTest {
         try {
             this.setupHttpStub("/endpoint", RequestMethod.POST, HttpStatusCodes.STATUS_CODE_OK, this.mapper.writeValueAsString(respData));
 
+            NetkiClient client = new NetkiClient("partner_id", "api_key", "http://localhost:9191");
             Requestor requestor = new Requestor();
-            String returnData = requestor.processRequest("api_key", "partner_id", "http://localhost:9191/endpoint", "POST", "post data");
+            String returnData = requestor.processRequest(client, "/endpoint", "POST", "post data");
 
             verify(postRequestedFor(urlMatching("/endpoint")).withRequestBody(matching("post data")));
             JsonNode assertData = this.mapper.readTree(returnData);
@@ -118,11 +179,12 @@ public class RequestorTest {
         try {
             this.setupHttpStub("/endpoint", RequestMethod.GET, HttpStatusCodes.STATUS_CODE_OK, this.mapper.writeValueAsString(respData));
 
+            NetkiClient client = new NetkiClient("partner_id", "api_key", "http://localhost:9191");
             Requestor requestor = new Requestor();
 
             try
             {
-                requestor.processRequest("api_key", "partner_id", "http://localhost:9191/endpoint", "GET", null);
+                requestor.processRequest(client, "/endpoint", "GET", null);
                 fail();
             } catch (Exception e) {
                 assertEquals("failure message", e.getMessage());
@@ -145,10 +207,11 @@ public class RequestorTest {
         try {
             this.setupHttpStub("/endpoint", RequestMethod.GET, HttpStatusCodes.STATUS_CODE_NOT_FOUND, this.mapper.writeValueAsString(respData));
 
+            NetkiClient client = new NetkiClient("partner_id", "api_key", "http://localhost:9191");
             Requestor requestor = new Requestor();
             try
             {
-                requestor.processRequest("api_key", "partner_id", "http://localhost:9191/endpoint", "GET", null);
+                requestor.processRequest(client, "/endpoint", "GET", null);
                 fail();
             }
             catch (Exception e)
@@ -182,10 +245,11 @@ public class RequestorTest {
         try {
             this.setupHttpStub("/endpoint", RequestMethod.GET, HttpStatusCodes.STATUS_CODE_OK, this.mapper.writeValueAsString(respData));
 
+            NetkiClient client = new NetkiClient("partner_id", "api_key", "http://localhost:9191");
             Requestor requestor = new Requestor();
             try
             {
-                requestor.processRequest("api_key", "partner_id", "http://localhost:9191/endpoint", "GET", null);
+                requestor.processRequest(client, "/endpoint", "GET", null);
                 fail();
             }
             catch (Exception e)

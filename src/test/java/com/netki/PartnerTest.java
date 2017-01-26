@@ -20,7 +20,7 @@ public class PartnerTest {
     public void setUp() {
         this.mockRequestor = mock(Requestor.class);
         try {
-            when(this.mockRequestor.processRequest(anyString(), anyString(), anyString(), anyString(), anyString())).thenReturn("");
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), anyString(), anyString(), anyString())).thenReturn("");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -44,10 +44,11 @@ public class PartnerTest {
     {
 
         // Setup Partner
+        NetkiClient client = new NetkiClient("partner_id", "api_key", "http://server");
         Partner partner = new Partner(this.mockRequestor);
         partner.setId("id");
         partner.setName("name");
-        partner.setApiOpts("https://server", "api_key", "partner_id");
+        partner.setNkClient(client);
 
         try {
             partner.delete();
@@ -57,7 +58,7 @@ public class PartnerTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest("api_key", "partner_id", "https://server/v1/admin/partner/name", "DELETE", null);
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/admin/partner/name"), eq("DELETE"), anyString());
         } catch (Exception e) {
             e.printStackTrace();
         }

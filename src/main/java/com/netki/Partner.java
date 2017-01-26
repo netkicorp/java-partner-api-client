@@ -42,9 +42,8 @@ public class Partner extends BaseObject {
      */
     public void delete() throws Exception {
         this.requestor.processRequest(
-                this.apiKey,
-                this.partnerId,
-                this.apiUrl + "/v1/admin/partner/" + this.name,
+                this.getNkClient(),
+                "/v1/admin/partner/" + this.name,
                 "DELETE",
                 null
         );

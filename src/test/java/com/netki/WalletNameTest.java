@@ -71,13 +71,15 @@ public class WalletNameTest {
         retData.put("wallet_names", retList);
 
         try {
-            when(mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/partner/walletname"), eq("POST"), anyString())).thenReturn(mapper.writeValueAsString(retData));
+            when(mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/partner/walletname"), eq("POST"), anyString())).thenReturn(mapper.writeValueAsString(retData));
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+        NetkiClient client = new NetkiClient("api_key", "partner_id", "http://server");
+
         WalletName walletName = new WalletName(this.mockRequestor);
-        walletName.setApiOpts("https://server", "api_key", "partner_id");
+        walletName.setNkClient(client);
         walletName.setDomainName("domain.com");
         walletName.setName("wallet");
         walletName.setExternalId("external_id");
@@ -91,7 +93,7 @@ public class WalletNameTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest(eq("api_key"), eq("partner_id"), eq("https://server/v1/partner/walletname"), eq("POST"), anyString());
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/partner/walletname"), eq("POST"), anyString());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -115,13 +117,15 @@ public class WalletNameTest {
         retData.put("wallet_names", retList);
 
         try {
-            when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/partner/walletname"), eq("POST"), anyString())).thenReturn(mapper.writeValueAsString(retData));
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/partner/walletname"), eq("POST"), anyString())).thenReturn(mapper.writeValueAsString(retData));
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+        NetkiClient client = new NetkiClient("api_key", "partner_id", "http://server");
+
         WalletName walletName = new WalletName(this.mockRequestor);
-        walletName.setApiOpts("https://server", "api_key", "partner_id");
+        walletName.setNkClient(client);
         walletName.setDomainName("domain.com");
         walletName.setName("wallet");
         walletName.setExternalId("external_id");
@@ -135,7 +139,7 @@ public class WalletNameTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest(eq("api_key"), eq("partner_id"), eq("https://server/v1/partner/walletname"), eq("POST"), anyString());
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/partner/walletname"), eq("POST"), anyString());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -159,13 +163,15 @@ public class WalletNameTest {
         retData.put("wallet_names", retList);
 
         try {
-            when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/partner/walletname"), eq("PUT"), anyString())).thenReturn(mapper.writeValueAsString(retData));
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/partner/walletname"), eq("PUT"), anyString())).thenReturn(mapper.writeValueAsString(retData));
         } catch (Exception e) {
             e.printStackTrace();
         }
 
+        NetkiClient client = new NetkiClient("api_key", "partner_id", "http://server");
+
         WalletName walletName = new WalletName(this.mockRequestor);
-        walletName.setApiOpts("https://server", "api_key", "partner_id");
+        walletName.setNkClient(client);
         walletName.setDomainName("domain.com");
         walletName.setName("wallet");
         walletName.setExternalId("external_id");
@@ -180,7 +186,7 @@ public class WalletNameTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest(eq("api_key"), eq("partner_id"), eq("https://server/v1/partner/walletname"), eq("PUT"), anyString());
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/partner/walletname"), eq("PUT"), anyString());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -206,13 +212,15 @@ public class WalletNameTest {
     @Test
     public void TestDelete()
     {
+        NetkiClient client = new NetkiClient("api_key", "partner_id", "http://server");
+
         WalletName walletName = new WalletName(this.mockRequestor);
         walletName.setDomainName("domain.com");
         walletName.setId("id");
-        walletName.setApiOpts("https://server", "api_key", "partner_id");
+        walletName.setNkClient(client);
 
         try {
-            when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/partner/walletname/domain.com/id"), eq("DELETE"), isNull(String.class))).thenReturn("");
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/partner/walletname/domain.com/id"), eq("DELETE"), isNull(String.class))).thenReturn("");
             walletName.delete();
         } catch (Exception e) {
             e.printStackTrace();
@@ -221,7 +229,7 @@ public class WalletNameTest {
         // Validate Call
         try {
             String nullString = null;
-            verify(this.mockRequestor, times(1)).processRequest(eq("api_key"), eq("partner_id"), eq("https://server/v1/partner/walletname/domain.com/id"), eq("DELETE"), eq(nullString));
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/partner/walletname/domain.com/id"), eq("DELETE"), eq(nullString));
         } catch (Exception e) {
             e.printStackTrace();
         }

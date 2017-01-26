@@ -49,7 +49,7 @@ public class NetkiClientTest {
         WalletNameGetResponse.put("wallet_name_count", 0);
 
         try {
-            when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/partner/walletname"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(WalletNameGetResponse));
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/partner/walletname"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(WalletNameGetResponse));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -64,7 +64,7 @@ public class NetkiClientTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest(eq("api_key"), eq("partner_id"), eq("https://server/v1/partner/walletname"), eq("GET"), anyString());
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/partner/walletname"), eq("GET"), anyString());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -97,7 +97,7 @@ public class NetkiClientTest {
         getResponse.put("wallet_names", new ArrayList<Object>(Collections.singletonList(walletNameObj)));
 
         try {
-            when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/partner/walletname?domain_name=domain.com&external_id=external_id"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(getResponse));
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/partner/walletname?domain_name=domain.com&external_id=external_id"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(getResponse));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -112,7 +112,7 @@ public class NetkiClientTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest(eq("api_key"), eq("partner_id"), eq("https://server/v1/partner/walletname?domain_name=domain.com&external_id=external_id"), eq("GET"), anyString());
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/partner/walletname?domain_name=domain.com&external_id=external_id"), eq("GET"), anyString());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -137,9 +137,9 @@ public class NetkiClientTest {
         assertEquals("domain.com", walletName.getDomainName());
         assertEquals("wallet", walletName.getName());
         assertEquals("external_id", walletName.getExternalId());
-        assertEquals(this.partnerId, walletName.getPartnerId());
-        assertEquals(this.apiKey, walletName.getApiKey());
-        assertEquals(this.apiUrl, walletName.getApiUrl());
+        assertEquals(this.partnerId, walletName.getNkClient().getPartnerId());
+        assertEquals(this.apiKey, walletName.getNkClient().getApiKey());
+        assertEquals(this.apiUrl, walletName.getNkClient().getApiUrl());
     }
 
     @Test
@@ -153,7 +153,7 @@ public class NetkiClientTest {
         postResponse.put("partner", partnerObj);
 
         try {
-            when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/admin/partner/My Partner"), eq("POST"), isNull(String.class))).thenReturn(mapper.writeValueAsString(postResponse));
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/admin/partner/My Partner"), eq("POST"), isNull(String.class))).thenReturn(mapper.writeValueAsString(postResponse));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -168,16 +168,16 @@ public class NetkiClientTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest(eq("api_key"), eq("partner_id"), eq("https://server/v1/admin/partner/My Partner"), eq("POST"), anyString());
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/admin/partner/My Partner"), eq("POST"), anyString());
         } catch (Exception e) {
             e.printStackTrace();
         }
 
         assertEquals("partnerId", partner.getId());
         assertEquals("My Partner", partner.getName());
-        assertEquals(this.partnerId, partner.getPartnerId());
-        assertEquals(this.apiKey, partner.getApiKey());
-        assertEquals(this.apiUrl, partner.getApiUrl());
+        assertEquals(this.partnerId, partner.getNkClient().getPartnerId());
+        assertEquals(this.apiKey, partner.getNkClient().getApiKey());
+        assertEquals(this.apiUrl, partner.getNkClient().getApiUrl());
 
     }
 
@@ -186,7 +186,7 @@ public class NetkiClientTest {
     {
         Map<String, String> getResponse = new HashMap<String, String>();
         try {
-            when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/admin/partner"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(getResponse));
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/admin/partner"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(getResponse));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -201,7 +201,7 @@ public class NetkiClientTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest(eq("api_key"), eq("partner_id"), eq("https://server/v1/admin/partner"), eq("GET"), isNull(String.class));
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/admin/partner"), eq("GET"), isNull(String.class));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -220,7 +220,7 @@ public class NetkiClientTest {
         getResponse.put("partners", Collections.singletonList(partnerObj));
 
         try {
-            when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/admin/partner"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(getResponse));
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/admin/partner"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(getResponse));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -235,7 +235,7 @@ public class NetkiClientTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest(eq("api_key"), eq("partner_id"), eq("https://server/v1/admin/partner"), eq("GET"), isNull(String.class));
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/admin/partner"), eq("GET"), isNull(String.class));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -243,9 +243,9 @@ public class NetkiClientTest {
         assertEquals(1, partners.size());
         assertEquals("partner_id", partners.get(0).getId());
         assertEquals("Test Partner", partners.get(0).getName());
-        assertEquals(this.partnerId, partners.get(0).getPartnerId());
-        assertEquals(this.apiKey, partners.get(0).getApiKey());
-        assertEquals(this.apiUrl, partners.get(0).getApiUrl());
+        assertEquals(this.partnerId, partners.get(0).getNkClient().getPartnerId());
+        assertEquals(this.apiKey, partners.get(0).getNkClient().getApiKey());
+        assertEquals(this.apiUrl, partners.get(0).getNkClient().getApiUrl());
     }
 
     @Test
@@ -256,7 +256,7 @@ public class NetkiClientTest {
         postResponse.put("nameservers", asList("ns1.domain.com", "ns2.domain.com"));
 
         try {
-            when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/partner/domain/domain.com"), eq("POST"), anyString())).thenReturn(mapper.writeValueAsString(postResponse));
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/partner/domain/domain.com"), eq("POST"), anyString())).thenReturn(mapper.writeValueAsString(postResponse));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -273,7 +273,7 @@ public class NetkiClientTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest(eq("api_key"), eq("partner_id"), eq("https://server/v1/partner/domain/domain.com"), eq("POST"), eq("{\"partner_id\":\"SubPartnerId\"}"));
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/partner/domain/domain.com"), eq("POST"), eq("{\"partner_id\":\"SubPartnerId\"}"));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -292,7 +292,7 @@ public class NetkiClientTest {
         postResponse.put("nameservers", asList("ns1.domain.com", "ns2.domain.com"));
 
         try {
-            when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/partner/domain/domain.com"), eq("POST"), anyString())).thenReturn(mapper.writeValueAsString(postResponse));
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/partner/domain/domain.com"), eq("POST"), anyString())).thenReturn(mapper.writeValueAsString(postResponse));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -308,7 +308,7 @@ public class NetkiClientTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest(eq("api_key"), eq("partner_id"), eq("https://server/v1/partner/domain/domain.com"), eq("POST"), isNull(String.class));
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/partner/domain/domain.com"), eq("POST"), isNull(String.class));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -324,7 +324,7 @@ public class NetkiClientTest {
     {
         Map<String, String> getResponse = new HashMap<String, String>();
         try {
-            when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/api/domain"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(getResponse));
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/api/domain"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(getResponse));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -339,7 +339,7 @@ public class NetkiClientTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest(eq("api_key"), eq("partner_id"), eq("https://server/api/domain"), eq("GET"), isNull(String.class));
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/api/domain"), eq("GET"), isNull(String.class));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -364,8 +364,8 @@ public class NetkiClientTest {
         domainDnssecStatusData.put("nameservers", asList("ns1.domain.com", "ns2.domain.com"));
 
         try {
-            when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/partner/domain/domain.com"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(domainStatusData));
-            when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/partner/domain/dnssec/domain.com"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(domainDnssecStatusData));
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/partner/domain/domain.com"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(domainStatusData));
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/partner/domain/dnssec/domain.com"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(domainDnssecStatusData));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -378,7 +378,7 @@ public class NetkiClientTest {
         getResponse.put("domains", Collections.singletonList(domainObj));
 
         try {
-            when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/api/domain"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(getResponse));
+            when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/api/domain"), eq("GET"), isNull(String.class))).thenReturn(mapper.writeValueAsString(getResponse));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -393,15 +393,15 @@ public class NetkiClientTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest(eq("api_key"), eq("partner_id"), eq("https://server/api/domain"), eq("GET"), isNull(String.class));
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/api/domain"), eq("GET"), isNull(String.class));
         } catch (Exception e) {
             e.printStackTrace();
         }
         assertEquals(1, result.size());
         assertEquals("domain.com", result.get(0).getName());
-        assertEquals(this.partnerId, result.get(0).getPartnerId());
-        assertEquals(this.apiKey, result.get(0).getApiKey());
-        assertEquals(this.apiUrl, result.get(0).getApiUrl());
+        assertEquals(this.partnerId, result.get(0).getNkClient().getPartnerId());
+        assertEquals(this.apiKey, result.get(0).getNkClient().getApiKey());
+        assertEquals(this.apiUrl, result.get(0).getNkClient().getApiUrl());
     }
 
 }

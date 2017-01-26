@@ -126,17 +126,15 @@ public class WalletName extends BaseObject {
 
         if (this.id != null) {
             this.requestor.processRequest(
-                    this.apiKey,
-                    this.partnerId,
-                    this.apiUrl + "/v1/partner/walletname",
+                    this.getNkClient(),
+                    "/v1/partner/walletname",
                     "PUT",
                     requestJson
             );
         } else {
             String respJsonString = this.requestor.processRequest(
-                    this.apiKey,
-                    this.partnerId,
-                    this.apiUrl + "/v1/partner/walletname",
+                    this.getNkClient(),
+                    "/v1/partner/walletname",
                     "POST",
                     requestJson
             );
@@ -165,9 +163,8 @@ public class WalletName extends BaseObject {
         }
 
         this.requestor.processRequest(
-                this.apiKey,
-                this.partnerId,
-                this.apiUrl + "/v1/partner/walletname/" + this.domainName + "/" + this.id,
+                this.getNkClient(),
+                "/v1/partner/walletname/" + this.domainName + "/" + this.id,
                 "DELETE",
                 null
         );

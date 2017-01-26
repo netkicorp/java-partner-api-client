@@ -31,7 +31,15 @@ This library can be included directly from Maven Central / OSS Sonatype.
 String partnerId = "XXXXXXXXXXXXXXXXXXXX";
 String apiKey = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
 
+String partnerKskDerHex = "3056301006072a8648ce3d020106052b8104000a03420004b185c46e29ad04654caa96f168c9b7c7d476103ec07274749c08af8c91a0ded94b04ba8b791b79913776a05a77b6f2408aea43cb4a9e3c30d593a475de82c3f5";
+String partnerKeySignDerHex = "30450221008cecbf4776c5d6ef713cd4bb4e4c4db7181ae0629859ccd77aca4a62a39bfc7a0220273145a3baf7338efa8bed231f9af0afcb3b88bacad4dbb653385cd3448d42d3";
+KeyPair userKey = ....;
+
+// Access Type: Partner ID & API Key
 NetkiClient client = new NetkiClient(partnerId, apiKey, "https://api.netki.com");
+
+// Access Type: Distributed API Access
+NetkiClient client = new NetkiClient(partnerKskDerHex, partnerKeySignDerHex, userKey, "https://api.netki.com");
 
 List<Domain> domains;
 List<Partner> partners;

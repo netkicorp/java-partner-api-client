@@ -48,9 +48,9 @@ public class DomainTest {
             throw new Exception("TestDomain Setup Failed");
         }
 
-        when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/partner/domain/domain.com"), eq("GET"), anyString())).thenReturn(domainStatusJson);
-        when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/partner/domain/dnssec/domain.com"), eq("GET"), anyString())).thenReturn(domainDnssecStatusJson);
-        when(this.mockRequestor.processRequest(anyString(), anyString(), eq("https://server/v1/partner/domain/domain.com"), eq("DELETE"), anyString())).thenReturn("");
+        when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/partner/domain/domain.com"), eq("GET"), anyString())).thenReturn(domainStatusJson);
+        when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/partner/domain/dnssec/domain.com"), eq("GET"), anyString())).thenReturn(domainDnssecStatusJson);
+        when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/partner/domain/domain.com"), eq("DELETE"), anyString())).thenReturn("");
 
     }
 
@@ -70,8 +70,9 @@ public class DomainTest {
     {
 
         // Setup Domain
+        NetkiClient client = new NetkiClient("partner_id", "api_key", "http://server");
         Domain domain = new Domain("domain.com", this.mockRequestor);
-        domain.setApiOpts("https://server", "api_key", "partner_id");
+        domain.setNkClient(client);
 
         try {
             domain.delete();
@@ -81,7 +82,7 @@ public class DomainTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest("api_key", "partner_id", "https://server/v1/partner/domain/domain.com", "DELETE", null);
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/partner/domain/domain.com"), eq("DELETE"), anyString());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -93,8 +94,9 @@ public class DomainTest {
     {
 
         // Setup Domain
+        NetkiClient client = new NetkiClient("partner_id", "api_key", "http://server");
         Domain domain = new Domain("domain.com", this.mockRequestor);
-        domain.setApiOpts("https://server", "api_key", "partner_id");
+        domain.setNkClient(client);
 
         try {
             domain.loadStatus();
@@ -104,7 +106,7 @@ public class DomainTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest("api_key", "partner_id", "https://server/v1/partner/domain/domain.com", "GET", null);
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/partner/domain/domain.com"), eq("GET"), anyString());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -121,8 +123,9 @@ public class DomainTest {
     {
 
         // Setup Domain
+        NetkiClient client = new NetkiClient("partner_id", "api_key", "http://server");
         Domain domain = new Domain("domain.com", this.mockRequestor);
-        domain.setApiOpts("https://server", "api_key", "partner_id");
+        domain.setNkClient(client);
 
         try {
             domain.loadDnssecDetails();
@@ -132,7 +135,7 @@ public class DomainTest {
 
         // Validate Call
         try {
-            verify(this.mockRequestor, times(1)).processRequest("api_key", "partner_id", "https://server/v1/partner/domain/dnssec/domain.com", "GET", null);
+            verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/partner/domain/dnssec/domain.com"), eq("GET"), anyString());
         } catch (Exception e) {
             e.printStackTrace();
         }

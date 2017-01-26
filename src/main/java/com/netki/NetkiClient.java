@@ -3,11 +3,28 @@ package com.netki;
 import com.google.api.client.util.Joiner;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.spongycastle.jcajce.provider.asymmetric.ec.BCECPublicKey;
+import org.spongycastle.jce.spec.ECNamedCurveSpec;
 
+import java.security.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+// Unused main() imports
+import com.google.common.io.BaseEncoding;
+import java.math.BigInteger;
+import java.security.spec.InvalidKeySpecException;
+import org.spongycastle.asn1.sec.SECNamedCurves;
+import org.spongycastle.asn1.x9.X9ECParameters;
+import org.spongycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey;
+import org.spongycastle.jce.spec.ECParameterSpec;
+import org.spongycastle.jce.spec.ECPrivateKeySpec;
+import org.spongycastle.jce.spec.ECPublicKeySpec;
+import org.spongycastle.jce.ECNamedCurveTable;
+import org.spongycastle.jce.provider.BouncyCastleProvider;
+import org.spongycastle.math.ec.ECPoint;
 
 /**
  * Netki Partner Client
@@ -17,6 +34,9 @@ public class NetkiClient {
     private String partnerId;
     private String apiKey;
     private String apiUrl = "https://api.netki.com";
+    private String partnerKskHex;
+    private String partnerKskSigHex;
+    private KeyPair userKey;
     private Requestor requestor = new Requestor();
     private ObjectMapper mapper = new ObjectMapper();
 
@@ -29,15 +49,11 @@ public class NetkiClient {
      */
     public NetkiClient(String partnerId, String apiKey, String apiUrl)
     {
-        this.partnerId = partnerId;
-        this.apiKey = apiKey;
-        if (apiUrl != null && !apiUrl.equals("")) {
-            this.apiUrl = apiUrl;
-        }
+        this(partnerId, apiKey, apiUrl, null);
     }
 
     /**
-     * Instantiate a NetkiClient object in <b>TEST</b>.
+     * Instantiate a NetkiClient (with specific Requestor)
      *
      * @param partnerId Netki Partner ID
      * @param apiKey Netki Partner API Key
@@ -48,10 +64,54 @@ public class NetkiClient {
     {
         this.partnerId = partnerId;
         this.apiKey = apiKey;
-        this.requestor = requestor;
+
+        if(requestor != null) {
+            this.requestor = requestor;
+        }
 
         if (apiUrl != null && !apiUrl.equals("")) {
             this.apiUrl = apiUrl;
+        }
+    }
+
+    /**
+     * Instantiate NetkiClient using Distributed API Access
+     *
+     * @param partnerKeySigningKeyHex Partner Key Signing Key (KSK) DER-Encoded (in HEX format)
+     * @param partnerKSKSignature Signature over userKey DER-encoded public key by Partner KSK (in HEX format)
+     * @param userKey User's KeyPair
+     */
+    public NetkiClient(String partnerKeySigningKeyHex, String partnerKSKSignature, KeyPair userKey, String apiUrl) throws Exception {
+        this(partnerKeySigningKeyHex, partnerKSKSignature, userKey, apiUrl, null);
+    }
+
+    /**
+     * Instantiate NetkiClient using Distributed API Access (with specific Requestor)
+     * @param partnerKeySigningKeyHex Partner Key Signing Key (KSK) DER-Encoded (in HEX format)
+     * @param partnerKSKSignature Signature over userKey DER-encoded public key by Partner KSK (in HEX format)
+     * @param userKey User's KeyPair
+     * @param requestor Netki Requestor (Used in <b>TEST</b>)
+     */
+    public NetkiClient(String partnerKeySigningKeyHex, String partnerKSKSignature, KeyPair userKey, String apiUrl, Requestor requestor) throws Exception {
+
+        if(!((BCECPublicKey) userKey.getPublic()).getAlgorithm().equals("ECDSA")) {
+            throw new Exception("userKey MUST be an ECDSA Key");
+        }
+
+        if(!((ECNamedCurveSpec)((BCECPublicKey) userKey.getPublic()).getParams()).getName().equals("secp256k1")) {
+            throw new Exception("userKey MUST be on the secp256k1 curve");
+        }
+
+        this.partnerKskHex = partnerKeySigningKeyHex;
+        this.partnerKskSigHex = partnerKSKSignature;
+        this.userKey = userKey;
+
+        if (apiUrl != null && !apiUrl.equals("")) {
+            this.apiUrl = apiUrl;
+        }
+
+        if(requestor != null) {
+            this.requestor = requestor;
         }
     }
 
@@ -86,14 +146,13 @@ public class NetkiClient {
             args.add("external_id=" + externalId);
         }
 
-        String uri = this.apiUrl + "/v1/partner/walletname";
+        String uri = "/v1/partner/walletname";
         if (args.size() > 0) {
             uri = uri + "?" + Joiner.on('&').join(args);
         }
 
         String respStr = this.requestor.processRequest(
-                this.apiKey,
-                this.partnerId,
+                this,
                 uri,
                 "GET",
                 null
@@ -116,7 +175,7 @@ public class NetkiClient {
                 wn.setCurrencyAddress(wallet.get("currency").asText(), wallet.get("wallet_address").asText());
             }
 
-            wn.setApiOpts(this.apiUrl, this.apiKey, this.partnerId);
+            wn.setNkClient(this);
             results.add(wn);
         }
 
@@ -136,7 +195,7 @@ public class NetkiClient {
         wn.setDomainName(domainName);
         wn.setName(name);
         wn.setExternalId(externalId);
-        wn.setApiOpts(this.apiUrl, this.apiKey, this.partnerId);
+        wn.setNkClient(this);
         return wn;
     }
 
@@ -154,9 +213,8 @@ public class NetkiClient {
     public Partner createPartner(String partnerName) throws Exception {
 
         String responseStr = this.requestor.processRequest(
-                this.apiKey,
-                this.partnerId,
-                this.apiUrl + "/v1/admin/partner/" + partnerName,
+                this,
+                "/v1/admin/partner/" + partnerName,
                 "POST",
                 null
         );
@@ -164,7 +222,7 @@ public class NetkiClient {
         JsonNode data = this.mapper.readTree(responseStr);
 
         Partner partner = new Partner(data.get("partner").get("id").asText(), data.get("partner").get("name").asText());
-        partner.setApiOpts(this.apiUrl, this.apiKey, this.partnerId);
+        partner.setNkClient(this);
         return partner;
     }
 
@@ -179,9 +237,8 @@ public class NetkiClient {
         List<Partner> partners = new ArrayList<Partner>();
 
         String responseStr = this.requestor.processRequest(
-                this.apiKey,
-                this.partnerId,
-                this.apiUrl + "/v1/admin/partner",
+                this,
+                "/v1/admin/partner",
                 "GET",
                 null
         );
@@ -194,7 +251,7 @@ public class NetkiClient {
 
         for (JsonNode partner : data.get("partners")) {
             Partner p = new Partner (partner.get("id").asText(), partner.get("name").asText());
-            p.setApiOpts (this.apiUrl, this.apiKey, this.partnerId);
+            p.setNkClient(this);
             partners.add(p);
         }
 
@@ -225,9 +282,8 @@ public class NetkiClient {
         }
 
         String responseStr = requestor.processRequest(
-                apiKey,
-                partnerId,
-                this.apiUrl + "/v1/partner/domain/" + domainName,
+                this,
+                "/v1/partner/domain/" + domainName,
                 "POST",
                 submitData
         );
@@ -235,7 +291,7 @@ public class NetkiClient {
         JsonNode data = this.mapper.readTree(responseStr);
 
         Domain domain = new Domain(domainName);
-        domain.setApiOpts(this.apiUrl, this.apiKey, this.partnerId);
+        domain.setNkClient(this);
         domain.setStatus(data.get("status").asText());
 
         List<String> nameservers = new ArrayList<String>();
@@ -257,9 +313,8 @@ public class NetkiClient {
         List<Domain> domains = new ArrayList<Domain>();
 
         String responseStr = requestor.processRequest(
-                this.apiKey,
-                this.partnerId,
-                this.apiUrl + "/api/domain",
+                this,
+                "/api/domain",
                 "GET",
                 null
         );
@@ -272,7 +327,7 @@ public class NetkiClient {
 
         for (JsonNode domain : data.get("domains")) {
             Domain d = new Domain(domain.get("domain_name").asText(), this.requestor);
-            d.setApiOpts(this.apiUrl, this.apiKey, this.partnerId);
+            d.setNkClient(this);
             d.loadStatus();
             d.loadDnssecDetails();
             domains.add(d);
@@ -281,14 +336,109 @@ public class NetkiClient {
         return domains;
     }
 
-    public static void main(String[] args) {
+    /**
+     * Get NetkiClient partnerId
+     * @return Netki Partner ID
+     */
+    public String getPartnerId() {
+        return partnerId;
+    }
 
+    /**
+     * Get Netki API Key
+     * @return Netki API Key
+     */
+    public String getApiKey() {
+        return apiKey;
+    }
+
+    /**
+     * Get Netki API Base URL
+     * @return Netki API Base URL
+     */
+    public String getApiUrl() {
+        return apiUrl;
+    }
+
+    /**
+     * Get Partner Key Signing Key (KSK) in Hex Format
+     * @return Partner KSK in Hex Format
+     */
+    public String getPartnerKskHex() {
+        return partnerKskHex;
+    }
+
+    /**
+     * Get Partner-generated Signature over User's Public Key (in DER Format) using the Partner KSK
+     * @return
+     */
+    public String getPartnerKskSigHex() {
+        return partnerKskSigHex;
+    }
+
+    /**
+     * Get User's KeyPair
+     * @return KeyPair
+     */
+    public KeyPair getUserKey() {
+        return userKey;
+    }
+
+//    public static void main(String[] args) {
+//
+//        String ecdsaPrivKey = "30818D020100301006072A8648CE3D020106052B8104000A047630740201010420B5ECE22AB6FCBCAF4BB9B965125C7D96C6FD9988F21A60A24291B5AC9A99626BA00706052B8104000AA14403420004DEC7133D28727AE93AF1003E24538E6471698A86309A1946865D31E8B43748790C6D7AB25132A53D1B2593DACA8C32ACA7083F46E277F8CE374311D2C9F727A5";
 //        String partnerId = "XXXXXXXXXXXXXXXXXXXX";
 //        String apiKey = "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+//        String partnerKsk = "3056301006072a8648ce3d020106052b8104000a03420004b185c46e29ad04654caa96f168c9b7c7d476103ec07274749c08af8c91a0ded94b04ba8b791b79913776a05a77b6f2408aea43cb4a9e3c30d593a475de82c3f5";
+//        String partnerKskSig = "30450221008cecbf4776c5d6ef713cd4bb4e4c4db7181ae0629859ccd77aca4a62a39bfc7a0220273145a3baf7338efa8bed231f9af0afcb3b88bacad4dbb653385cd3448d42d3";
 //
-//        NetkiClient client = new NetkiClient(partnerId, apiKey, "http://localhost:5000");
+//        // Generate New User Key For Each Invocation
+//        Security.insertProviderAt(new BouncyCastleProvider(), 1);
+//        KeyPair keyPair = null;
+//        KeyPair storedKeyPair = null;
+//        try {
+//            ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("secp256k1");
+//            KeyPairGenerator generator = KeyPairGenerator.getInstance("ECDSA", "SC");
+//            generator.initialize(ecSpec, new SecureRandom());
+//            keyPair = generator.generateKeyPair();
+//        } catch (Exception e) {
+//            System.out.println("Error Creating ECKeyPair: " + e.toString());
+//            System.exit(-1);
+//        }
+//
+//        // Re-create KeyPair from Existing ecdsaPrivKey
+//        KeyPair kp = null;
+//        try {
+//            KeyFactory keyFactory = KeyFactory.getInstance("ECDSA", "SC");
+//            ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("secp256k1");
+//            ECPrivateKeySpec privKeySpec = new ECPrivateKeySpec(new BigInteger(1, BaseEncoding.base16().decode(ecdsaPrivKey)), ecSpec);
+//            PrivateKey privKey = keyFactory.generatePrivate(privKeySpec);
+//
+//            // Generate Public Key from Private Key
+//            X9ECParameters ecp = SECNamedCurves.getByName("secp256k1");
+//            ECPoint curvePt = ecp.getG().multiply(((BCECPrivateKey)privKey).getD());
+//            ECPublicKeySpec pubKeySpec = new ECPublicKeySpec(curvePt, ecSpec);
+//            PublicKey pubKey = keyFactory.generatePublic(pubKeySpec);
+//            kp = new KeyPair(pubKey, privKey);
+//        } catch (NoSuchAlgorithmException e) {
+//            e.printStackTrace();
+//        } catch (NoSuchProviderException e) {
+//            e.printStackTrace();
+//        } catch (InvalidKeySpecException e) {
+//            e.printStackTrace();
+//        }
+//
+//        NetkiClient client = null;
+//        try {
+//            //client = new NetkiClient(partnerKsk, partnerKskSig, keyPair, null);
+//            client = new NetkiClient(partnerKsk, partnerKskSig, kp, "http://localhost:5000");
+//        } catch (Exception e) {
+//            System.out.println("NetkiClient CTOR Thew Exception: " + e.toString());
+//            System.exit(-1);
+//        }
 //
 //        try {
+//
 //            List<Domain> domains = client.getDomains();
 //
 //            for (Domain domain : domains) {
@@ -335,7 +485,7 @@ public class NetkiClient {
 //        } catch (Exception e) {
 //            e.printStackTrace();
 //        }
-
-    }
+//
+//    }
     
 }
