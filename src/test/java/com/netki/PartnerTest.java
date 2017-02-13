@@ -48,7 +48,7 @@ public class PartnerTest {
         Partner partner = new Partner(this.mockRequestor);
         partner.setId("id");
         partner.setName("name");
-        partner.setNkClient(client);
+        partner.setClient(client);
 
         try {
             partner.delete();

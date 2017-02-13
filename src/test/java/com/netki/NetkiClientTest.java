@@ -5,15 +5,20 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.security.*;
 import java.util.*;
 
+import static com.netki.TestUtil.generateKey;
 import static java.util.Arrays.*;
 import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
+import static org.powermock.api.mockito.PowerMockito.whenNew;
 
+@PowerMockIgnore({"javax.*", "org.spongycastle.*", "org.mockito.*", "com.madgag.*"})
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(NetkiClient.class)
 public class NetkiClientTest {
@@ -36,11 +41,62 @@ public class NetkiClientTest {
     }
 
     @Test
-    public void NetkiInstantiation()
+    public void ApiKeyInstantiation()
     {
         NetkiClient netki = new NetkiClient(this.partnerId, this.apiKey, this.apiUrl);
         assertNotNull(netki);
+        assertEquals(this.partnerId, netki.getPartnerId());
+        assertEquals(this.apiKey, netki.getApiKey());
+        assertEquals(this.apiUrl, netki.getApiUrl());
     }
+
+    @Test
+    public void ApiKeyInstantiationDefaultURL()
+    {
+        NetkiClient netki = new NetkiClient(this.partnerId, this.apiKey, null);
+        assertNotNull(netki);
+        assertEquals(this.partnerId, netki.getPartnerId());
+        assertEquals(this.apiKey, netki.getApiKey());
+        assertEquals("https://api.netki.com", netki.getApiUrl());
+    }
+
+    @Test
+    public void DistributedAccessInstantiation() {
+        NetkiClient netki = null;
+        KeyPair keyPair = generateKey("ECDSA");
+
+        if(keyPair == null) {
+            fail("keyPair is null");
+        }
+
+        try {
+            netki = new NetkiClient("ffff", "eeee", keyPair, null);
+        } catch (Exception e) {
+            fail(e.getMessage());
+        }
+
+        assertEquals("ffff", netki.getPartnerKskHex());
+        assertEquals("eeee", netki.getPartnerKskSigHex());
+        assertEquals(keyPair, netki.getUserKey());
+
+    }
+
+    @Test
+    public void PartnerSignedAccessInstantiation() {
+        NetkiClient netki = null;
+        KeyPair keyPair = generateKey("ECDSA");
+
+        try {
+            netki = new NetkiClient("partnerId", keyPair, null);
+        } catch (Exception e) {
+            fail(e.getMessage());
+        }
+
+        assertEquals("partnerId", netki.getPartnerId());
+        assertEquals(keyPair, netki.getUserKey());
+
+    }
+
 
     @Test
     public void GetWalletNamesNoWalletNames()
@@ -137,10 +193,175 @@ public class NetkiClientTest {
         assertEquals("domain.com", walletName.getDomainName());
         assertEquals("wallet", walletName.getName());
         assertEquals("external_id", walletName.getExternalId());
-        assertEquals(this.partnerId, walletName.getNkClient().getPartnerId());
-        assertEquals(this.apiKey, walletName.getNkClient().getApiKey());
-        assertEquals(this.apiUrl, walletName.getNkClient().getApiUrl());
+        assertEquals(netki, walletName.getClient());
     }
+
+    @Test
+    public void CreateCertificate()
+    {
+        NetkiClient netki = new NetkiClient(this.partnerId, this.apiKey, this.apiUrl, this.mockRequestor);
+        Certificate certificate = netki.createCertificate();
+        assertEquals(netki, certificate.getClient());
+    }
+
+    @Test
+    public void GetCertificate() throws Exception {
+
+        Certificate mockCert = mock(Certificate.class);
+        whenNew(Certificate.class).withNoArguments().thenReturn(mockCert);
+        NetkiClient netki = new NetkiClient(this.partnerId, this.apiKey, this.apiUrl, this.mockRequestor);
+
+        Certificate certificate = netki.getCertificate("id");
+
+        verify(mockCert, times(1)).setId(eq("id"));
+        verify(mockCert, times(1)).getStatus();
+        assertEquals(netki, mockCert.getClient());
+        assertEquals(certificate, mockCert);
+    }
+
+    @Test
+    public void GetAvailableProducts_GoRight() throws Exception {
+
+        NetkiClient netki = new NetkiClient(this.partnerId, this.apiKey, this.apiUrl, this.mockRequestor);
+        String respJson = "{\"products\": [{\"current_price\": {\"UK\": 200, \"US\": 100}, \"id\": \"id1\", \"current_tier\": \"Base Tier\", \"product_name\": \"Product1\"}, {\"current_price\": {\"DE\": 500, \"AU\": 1000}, \"id\": \"id2\", \"current_tier\": \"Expensive Tier\", \"product_name\": \"Product2\"}]}";
+        when(this.mockRequestor.processRequest(
+                any(NetkiClient.class),
+                eq("/v1/certificate/products"),
+                eq("GET"),
+                anyString())
+        ).thenReturn(respJson);
+
+        List<Product> products = netki.getAvailableProducts();
+
+        assertEquals(2, products.size());
+        assertEquals("id1", products.get(0).getId());
+        assertEquals("Product1", products.get(0).getName());
+        assertEquals("Base Tier", products.get(0).getCurrentTierName());
+        assertEquals(new Integer(100), products.get(0).getCurrentPrice("US"));
+        assertEquals(new Integer(200), products.get(0).getCurrentPrice("UK"));
+
+        assertEquals("id2", products.get(1).getId());
+        assertEquals("Product2", products.get(1).getName());
+        assertEquals("Expensive Tier", products.get(1).getCurrentTierName());
+        assertEquals(new Integer(1000), products.get(1).getCurrentPrice("AU"));
+        assertEquals(new Integer(500), products.get(1).getCurrentPrice("DE"));
+
+    }
+
+    @Test
+    public void GetAvailableProducts_MissingData() throws Exception {
+        NetkiClient netki = new NetkiClient(this.partnerId, this.apiKey, this.apiUrl, this.mockRequestor);
+        String respJson = "{\"products\": [{\"id\": \"id1\", \"current_tier\": \"Base Tier\", \"product_name\": \"Product1\"}, {\"current_price\": {\"DE\": 500, \"AU\": 1000}, \"id\": \"id2\"}]}";
+        when(this.mockRequestor.processRequest(
+                any(NetkiClient.class),
+                eq("/v1/certificate/products"),
+                eq("GET"),
+                anyString())
+        ).thenReturn(respJson);
+
+        List<Product> products = netki.getAvailableProducts();
+
+        assertEquals(2, products.size());
+        assertEquals("id1", products.get(0).getId());
+        assertEquals("Product1", products.get(0).getName());
+        assertEquals("Base Tier", products.get(0).getCurrentTierName());
+        assertEquals(0, products.get(0).getCountries().size());
+
+        assertEquals("id2", products.get(1).getId());
+        assertNull(products.get(1).getName());
+        assertNull(products.get(1).getCurrentTierName());
+        assertEquals(new Integer(1000), products.get(1).getCurrentPrice("AU"));
+        assertEquals(new Integer(500), products.get(1).getCurrentPrice("DE"));
+    }
+
+    @Test
+    public void GetAvailableProducts_MissingID() throws Exception {
+        NetkiClient netki = new NetkiClient(this.partnerId, this.apiKey, this.apiUrl, this.mockRequestor);
+        String respJson = "{\"products\": [{\"current_tier\": \"Base Tier\", \"product_name\": \"Product1\"}, {\"current_price\": {\"DE\": 500, \"AU\": 1000}, \"id\": \"id2\"}]}";
+        when(this.mockRequestor.processRequest(
+                any(NetkiClient.class),
+                eq("/v1/certificate/products"),
+                eq("GET"),
+                anyString())
+        ).thenReturn(respJson);
+
+        try {
+            netki.getAvailableProducts();
+            fail("Expected Exception");
+        } catch (NetkiException ne) {
+            assertEquals("Product Response Missing ID Field", ne.getMessage());
+        }
+    }
+
+    @Test
+    public void GetCACertBundle_GoRight() throws Exception {
+        NetkiClient netki = new NetkiClient(this.partnerId, this.apiKey, this.apiUrl, this.mockRequestor);
+        String respJson = "{\"cacerts\":\"CACERT_PEMS\"}";
+        when(this.mockRequestor.processRequest(
+                any(NetkiClient.class),
+                eq("/v1/certificate/cacert"),
+                eq("GET"),
+                isNull(String.class))
+        ).thenReturn(respJson);
+
+        String bundle = netki.getCACertBundle();
+        assertEquals("CACERT_PEMS", bundle);
+
+        verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/certificate/cacert"), eq("GET"), isNull(String.class));
+    }
+
+    @Test
+    public void GetCACertBundle_EmptyResponse() throws Exception {
+        NetkiClient netki = new NetkiClient(this.partnerId, this.apiKey, this.apiUrl, this.mockRequestor);
+        String respJson = "{\"other\":\"thing\"}";
+        when(this.mockRequestor.processRequest(
+                any(NetkiClient.class),
+                eq("/v1/certificate/cacert"),
+                eq("GET"),
+                isNull(String.class))
+        ).thenReturn(respJson);
+
+        String bundle = netki.getCACertBundle();
+        assertEquals("", bundle);
+
+        verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/certificate/cacert"), eq("GET"), isNull(String.class));
+    }
+
+    @Test
+    public void GetAccountBalance_GoRight() throws Exception {
+        NetkiClient netki = new NetkiClient(this.partnerId, this.apiKey, this.apiUrl, this.mockRequestor);
+        String respJson = "{\"available_balance\": 100}";
+        when(this.mockRequestor.processRequest(
+                any(NetkiClient.class),
+                eq("/v1/certificate/balance"),
+                eq("GET"),
+                isNull(String.class))
+        ).thenReturn(respJson);
+
+        Integer balance = netki.getAccountBalance();
+        assertEquals(100, balance.intValue());
+
+        verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/certificate/balance"), eq("GET"), isNull(String.class));
+    }
+
+    @Test
+    public void GetAccountBalance_EmptyResponse() throws Exception {
+        NetkiClient netki = new NetkiClient(this.partnerId, this.apiKey, this.apiUrl, this.mockRequestor);
+        String respJson = "{\"other\":\"thing\"}";
+        when(this.mockRequestor.processRequest(
+                any(NetkiClient.class),
+                eq("/v1/certificate/balance"),
+                eq("GET"),
+                isNull(String.class))
+        ).thenReturn(respJson);
+
+        Integer balance = netki.getAccountBalance();
+        assertEquals(0, balance.intValue());
+
+        verify(this.mockRequestor, times(1)).processRequest(any(NetkiClient.class), eq("/v1/certificate/balance"), eq("GET"), isNull(String.class));
+    }
+
+
 
     @Test
     public void CreatePartner()
@@ -175,9 +396,7 @@ public class NetkiClientTest {
 
         assertEquals("partnerId", partner.getId());
         assertEquals("My Partner", partner.getName());
-        assertEquals(this.partnerId, partner.getNkClient().getPartnerId());
-        assertEquals(this.apiKey, partner.getNkClient().getApiKey());
-        assertEquals(this.apiUrl, partner.getNkClient().getApiUrl());
+        assertEquals(netki, partner.getClient());
 
     }
 
@@ -243,9 +462,7 @@ public class NetkiClientTest {
         assertEquals(1, partners.size());
         assertEquals("partner_id", partners.get(0).getId());
         assertEquals("Test Partner", partners.get(0).getName());
-        assertEquals(this.partnerId, partners.get(0).getNkClient().getPartnerId());
-        assertEquals(this.apiKey, partners.get(0).getNkClient().getApiKey());
-        assertEquals(this.apiUrl, partners.get(0).getNkClient().getApiUrl());
+        assertEquals(netki, partners.get(0).getClient());
     }
 
     @Test
@@ -399,9 +616,7 @@ public class NetkiClientTest {
         }
         assertEquals(1, result.size());
         assertEquals("domain.com", result.get(0).getName());
-        assertEquals(this.partnerId, result.get(0).getNkClient().getPartnerId());
-        assertEquals(this.apiKey, result.get(0).getNkClient().getApiKey());
-        assertEquals(this.apiUrl, result.get(0).getNkClient().getApiUrl());
+        assertEquals(netki, result.get(0).getClient());
     }
 
 }

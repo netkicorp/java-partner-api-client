@@ -3,28 +3,13 @@ package com.netki;
 import com.google.api.client.util.Joiner;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.node.IntNode;
 import org.spongycastle.jcajce.provider.asymmetric.ec.BCECPublicKey;
 import org.spongycastle.jce.spec.ECNamedCurveSpec;
 
 import java.security.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-// Unused main() imports
-import com.google.common.io.BaseEncoding;
-import java.math.BigInteger;
-import java.security.spec.InvalidKeySpecException;
-import org.spongycastle.asn1.sec.SECNamedCurves;
-import org.spongycastle.asn1.x9.X9ECParameters;
-import org.spongycastle.jcajce.provider.asymmetric.ec.BCECPrivateKey;
-import org.spongycastle.jce.spec.ECParameterSpec;
-import org.spongycastle.jce.spec.ECPrivateKeySpec;
-import org.spongycastle.jce.spec.ECPublicKeySpec;
-import org.spongycastle.jce.ECNamedCurveTable;
-import org.spongycastle.jce.provider.BouncyCastleProvider;
-import org.spongycastle.math.ec.ECPoint;
 
 /**
  * Netki Partner Client
@@ -80,6 +65,7 @@ public class NetkiClient {
      * @param partnerKeySigningKeyHex Partner Key Signing Key (KSK) DER-Encoded (in HEX format)
      * @param partnerKSKSignature Signature over userKey DER-encoded public key by Partner KSK (in HEX format)
      * @param userKey User's KeyPair
+     * @param apiUrl Netki Base URL (i.e., https://api.netki.com). A value of null leaves the default
      */
     public NetkiClient(String partnerKeySigningKeyHex, String partnerKSKSignature, KeyPair userKey, String apiUrl) throws Exception {
         this(partnerKeySigningKeyHex, partnerKSKSignature, userKey, apiUrl, null);
@@ -90,11 +76,12 @@ public class NetkiClient {
      * @param partnerKeySigningKeyHex Partner Key Signing Key (KSK) DER-Encoded (in HEX format)
      * @param partnerKSKSignature Signature over userKey DER-encoded public key by Partner KSK (in HEX format)
      * @param userKey User's KeyPair
+     * @param apiUrl Netki Base URL (i.e., https://api.netki.com). A value of null leaves the default
      * @param requestor Netki Requestor (Used in <b>TEST</b>)
      */
     public NetkiClient(String partnerKeySigningKeyHex, String partnerKSKSignature, KeyPair userKey, String apiUrl, Requestor requestor) throws Exception {
 
-        if(!((BCECPublicKey) userKey.getPublic()).getAlgorithm().equals("ECDSA")) {
+        if(!userKey.getPublic().getAlgorithm().equals("ECDSA")) {
             throw new Exception("userKey MUST be an ECDSA Key");
         }
 
@@ -104,6 +91,45 @@ public class NetkiClient {
 
         this.partnerKskHex = partnerKeySigningKeyHex;
         this.partnerKskSigHex = partnerKSKSignature;
+        this.userKey = userKey;
+
+        if (apiUrl != null && !apiUrl.equals("")) {
+            this.apiUrl = apiUrl;
+        }
+
+        if(requestor != null) {
+            this.requestor = requestor;
+        }
+    }
+
+    /**
+     * Instantiate NetkiClient using Signed Partner API Access
+     * @param partnerId Netki Partner ID
+     * @param userKey User's KeyPair
+     * @param apiUrl Netki Base URL (i.e., https://api.netki.com). A value of null leaves the default
+     */
+    public NetkiClient(String partnerId, KeyPair userKey, String apiUrl) throws Exception {
+        this(partnerId, userKey, apiUrl, null);
+    }
+
+    /**
+     * Instantiate NetkiClient using Signed Partner API Access (with specific Requestor)
+     * @param partnerId Netki Partner ID
+     * @param userKey User's KeyPair
+     * @param apiUrl Netki Base URL (i.e., https://api.netki.com). A value of null leaves the default
+     * @param requestor Netki Requestor (Used in <b>TEST</b>)
+     */
+    public NetkiClient(String partnerId, KeyPair userKey, String apiUrl, Requestor requestor) throws Exception {
+
+        if(!userKey.getPublic().getAlgorithm().equals("ECDSA")) {
+            throw new Exception("userKey MUST be an ECDSA Key");
+        }
+
+        if(!((ECNamedCurveSpec)((BCECPublicKey) userKey.getPublic()).getParams()).getName().equals("secp256k1")) {
+            throw new Exception("userKey MUST be on the secp256k1 curve");
+        }
+
+        this.partnerId = partnerId;
         this.userKey = userKey;
 
         if (apiUrl != null && !apiUrl.equals("")) {
@@ -175,7 +201,7 @@ public class NetkiClient {
                 wn.setCurrencyAddress(wallet.get("currency").asText(), wallet.get("wallet_address").asText());
             }
 
-            wn.setNkClient(this);
+            wn.setClient(this);
             results.add(wn);
         }
 
@@ -183,20 +209,146 @@ public class NetkiClient {
     }
 
     /**
-     * Create New WalletName object
+     * Create New WalletName
      *
      * @param domainName Domain Name of Wallet Name
      * @param name Name of Wallet Name
      * @param externalId ExternalID of Wallet Name
-     * @return Newly Created WalletName object. <b>NOTE:</b> the WalletName must be save()ed to commit to Netki
+     * @return Newly Created WalletName. <b>NOTE:</b> the WalletName must be save()ed to commit to Netki
      */
     public WalletName createWalletName(String domainName, String name, String externalId) {
         WalletName wn = new WalletName ();
         wn.setDomainName(domainName);
         wn.setName(name);
         wn.setExternalId(externalId);
-        wn.setNkClient(this);
+        wn.setClient(this);
         return wn;
+    }
+
+    /**
+     * Create New Certificate
+     * @return Newly created Certificate <b>NOTE:</b> the Certificate must go through the
+     * process of ordering as Customer data is not persisted.
+     */
+    public Certificate createCertificate() {
+        Certificate cert = new Certificate();
+        cert.setClient(this);
+        return cert;
+    }
+
+    /**
+     * Retrieve Existing Certificate
+     * @param id Certificate Id
+     * @return Retrieved Certificate from Netki
+     * @throws Exception
+     */
+    public Certificate getCertificate(String id) throws Exception {
+        Certificate cert = this.createCertificate();
+        cert.setId(id);
+        cert.setClient(this);
+        cert.getStatus();
+        return cert;
+    }
+
+    /**
+     * Retrieve Available Products
+     * @return List of Available Products
+     * @throws Exception
+     */
+    public List<Product> getAvailableProducts() throws Exception {
+
+        List<Product> results = new LinkedList<Product>();
+
+        String respStr = this.requestor.processRequest(
+                this,
+                "/v1/certificate/products",
+                "GET",
+                null
+        );
+
+        JsonNode respJson = this.mapper.readTree(respStr);
+
+        if (respJson.get("products") == null) {
+            return results;
+        }
+
+        for (JsonNode data : respJson.get("products")) {
+            Product p = new Product();
+
+            if(data.get("id") == null) {
+                throw new NetkiException("Product Response Missing ID Field");
+            }
+
+            p.setId(data.get("id").asText());
+
+            if(data.get("product_name") != null)
+                p.setName(data.get("product_name").asText());
+
+            if(data.get("current_tier") != null)
+                p.setCurrentTierName(data.get("current_tier").asText());
+
+            if(data.get("term") != null)
+                p.setTerm(data.get("term").asInt());
+
+            if (data.get("current_price") != null) {
+                Iterator<Map.Entry<String, JsonNode>> priceIterator = data.get("current_price").getFields();
+                while(priceIterator.hasNext()) {
+                    Map.Entry<String, JsonNode> field = priceIterator.next();
+                    p.setCurrentPrice(field.getKey(), field.getValue().asInt());
+                }
+            }
+
+            results.add(p);
+        }
+
+        return results;
+
+    }
+
+    /**
+     * Retrieve CA Certificates
+     * @return String CACert File
+     * @throws Exception
+     */
+    public String getCACertBundle() throws Exception {
+
+        String respStr = this.requestor.processRequest(
+                this,
+                "/v1/certificate/cacert",
+                "GET",
+                null
+        );
+
+        JsonNode respJson = this.mapper.readTree(respStr);
+
+        if (respJson.get("cacerts") == null) {
+            return "";
+        }
+        return respJson.get("cacerts").asText();
+
+    }
+
+    /**
+     * Retrieve Current Account Balance in USD Cents
+     * @return Integer representation of current account balance in USD Cents
+     * @throws Exception
+     */
+    public Integer getAccountBalance() throws Exception {
+
+        String respStr = this.requestor.processRequest(
+                this,
+                "/v1/certificate/balance",
+                "GET",
+                null
+        );
+
+        JsonNode respJson = this.mapper.readTree(respStr);
+
+        if (respJson.get("available_balance") == null) {
+            return 0;
+        }
+        return respJson.get("available_balance").asInt();
+
     }
 
     /*
@@ -222,7 +374,7 @@ public class NetkiClient {
         JsonNode data = this.mapper.readTree(responseStr);
 
         Partner partner = new Partner(data.get("partner").get("id").asText(), data.get("partner").get("name").asText());
-        partner.setNkClient(this);
+        partner.setClient(this);
         return partner;
     }
 
@@ -251,7 +403,7 @@ public class NetkiClient {
 
         for (JsonNode partner : data.get("partners")) {
             Partner p = new Partner (partner.get("id").asText(), partner.get("name").asText());
-            p.setNkClient(this);
+            p.setClient(this);
             partners.add(p);
         }
 
@@ -291,7 +443,7 @@ public class NetkiClient {
         JsonNode data = this.mapper.readTree(responseStr);
 
         Domain domain = new Domain(domainName);
-        domain.setNkClient(this);
+        domain.setClient(this);
         domain.setStatus(data.get("status").asText());
 
         List<String> nameservers = new ArrayList<String>();
@@ -327,7 +479,7 @@ public class NetkiClient {
 
         for (JsonNode domain : data.get("domains")) {
             Domain d = new Domain(domain.get("domain_name").asText(), this.requestor);
-            d.setNkClient(this);
+            d.setClient(this);
             d.loadStatus();
             d.loadDnssecDetails();
             domains.add(d);

@@ -63,7 +63,7 @@ public class Domain extends BaseObject {
      */
     public void delete() throws Exception {
         this.requestor.processRequest(
-                this.getNkClient(),
+                this.getClient(),
                 "/v1/partner/domain/" + this.name,
                 "DELETE",
                 null
@@ -77,7 +77,7 @@ public class Domain extends BaseObject {
      */
     public void loadStatus() throws Exception {
         String responseStr = this.requestor.processRequest(
-                this.getNkClient(),
+                this.getClient(),
                 "/v1/partner/domain/" + this.name,
                 "GET",
                 null
@@ -107,7 +107,7 @@ public class Domain extends BaseObject {
      */
     public void loadDnssecDetails() throws Exception {
         String responseStr = this.requestor.processRequest(
-                this.getNkClient(),
+                this.getClient(),
                 "/v1/partner/domain/dnssec/" + this.name,
                 "GET",
                 null

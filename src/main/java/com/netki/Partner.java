@@ -42,7 +42,7 @@ public class Partner extends BaseObject {
      */
     public void delete() throws Exception {
         this.requestor.processRequest(
-                this.getNkClient(),
+                this.getClient(),
                 "/v1/admin/partner/" + this.name,
                 "DELETE",
                 null

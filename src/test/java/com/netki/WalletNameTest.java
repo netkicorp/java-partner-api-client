@@ -8,7 +8,6 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,8 +20,8 @@ import static org.junit.Assert.*;
 @PrepareForTest(WalletName.class)
 public class WalletNameTest {
 
-    Requestor mockRequestor;
-    ObjectMapper mapper = new ObjectMapper();
+    private Requestor mockRequestor;
+    private ObjectMapper mapper = new ObjectMapper();
 
     @Before
     public void setUp() {
@@ -79,7 +78,7 @@ public class WalletNameTest {
         NetkiClient client = new NetkiClient("api_key", "partner_id", "http://server");
 
         WalletName walletName = new WalletName(this.mockRequestor);
-        walletName.setNkClient(client);
+        walletName.setClient(client);
         walletName.setDomainName("domain.com");
         walletName.setName("wallet");
         walletName.setExternalId("external_id");
@@ -125,7 +124,7 @@ public class WalletNameTest {
         NetkiClient client = new NetkiClient("api_key", "partner_id", "http://server");
 
         WalletName walletName = new WalletName(this.mockRequestor);
-        walletName.setNkClient(client);
+        walletName.setClient(client);
         walletName.setDomainName("domain.com");
         walletName.setName("wallet");
         walletName.setExternalId("external_id");
@@ -171,7 +170,7 @@ public class WalletNameTest {
         NetkiClient client = new NetkiClient("api_key", "partner_id", "http://server");
 
         WalletName walletName = new WalletName(this.mockRequestor);
-        walletName.setNkClient(client);
+        walletName.setClient(client);
         walletName.setDomainName("domain.com");
         walletName.setName("wallet");
         walletName.setExternalId("external_id");
@@ -217,7 +216,7 @@ public class WalletNameTest {
         WalletName walletName = new WalletName(this.mockRequestor);
         walletName.setDomainName("domain.com");
         walletName.setId("id");
-        walletName.setNkClient(client);
+        walletName.setClient(client);
 
         try {
             when(this.mockRequestor.processRequest(any(NetkiClient.class), eq("/v1/partner/walletname/domain.com/id"), eq("DELETE"), isNull(String.class))).thenReturn("");

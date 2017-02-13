@@ -72,7 +72,7 @@ public class DomainTest {
         // Setup Domain
         NetkiClient client = new NetkiClient("partner_id", "api_key", "http://server");
         Domain domain = new Domain("domain.com", this.mockRequestor);
-        domain.setNkClient(client);
+        domain.setClient(client);
 
         try {
             domain.delete();
@@ -96,7 +96,7 @@ public class DomainTest {
         // Setup Domain
         NetkiClient client = new NetkiClient("partner_id", "api_key", "http://server");
         Domain domain = new Domain("domain.com", this.mockRequestor);
-        domain.setNkClient(client);
+        domain.setClient(client);
 
         try {
             domain.loadStatus();
@@ -125,7 +125,7 @@ public class DomainTest {
         // Setup Domain
         NetkiClient client = new NetkiClient("partner_id", "api_key", "http://server");
         Domain domain = new Domain("domain.com", this.mockRequestor);
-        domain.setNkClient(client);
+        domain.setClient(client);
 
         try {
             domain.loadDnssecDetails();

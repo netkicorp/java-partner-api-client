@@ -12,46 +12,25 @@ import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
-import java.io.IOException;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.SecureRandom;
-import java.security.Security;
+import java.security.*;
 import java.util.*;
 
-import static org.mockito.Mockito.*;
+import static com.netki.TestUtil.generateKey;
 import static org.junit.Assert.*;
 
 import com.github.tomakehurst.wiremock.junit.WireMockRule;
-import org.spongycastle.jce.ECNamedCurveTable;
-import org.spongycastle.jce.provider.BouncyCastleProvider;
-import org.spongycastle.jce.spec.ECParameterSpec;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 
+@PowerMockIgnore("javax.net.ssl.*")
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(Requestor.class)
-@PowerMockIgnore("javax.net.ssl.*")
 public class RequestorTest {
 
     @Rule
     public WireMockRule wireMockRule = new WireMockRule(9191);
-    public ObjectMapper mapper = new ObjectMapper();
-    public static KeyPair userKeyPair = null;
-
-    @BeforeClass
-    public static void setupKeys()
-    {
-        try {
-            Security.addProvider(new BouncyCastleProvider());
-            ECParameterSpec ecSpec = ECNamedCurveTable.getParameterSpec("secp256k1");
-            KeyPairGenerator generator = KeyPairGenerator.getInstance("ECDSA", "SC");
-            generator.initialize(ecSpec, new SecureRandom());
-            RequestorTest.userKeyPair = generator.generateKeyPair();
-        } catch (Exception e) {
-            fail("Unable to Create Test KeyPair");
-        }
-    }
+    private ObjectMapper mapper = new ObjectMapper();
+    private static KeyPair userKeyPair = generateKey("ecdsa");
 
     public void setupHttpStub(String endpoint, RequestMethod method, int statusCode, String responseData) {
 
@@ -69,7 +48,7 @@ public class RequestorTest {
 
     public void setupHttpStubDistributedAccess(String endpoint, RequestMethod method, int statusCode, String responseData) {
         stubFor(new MappingBuilder(method, urlEqualTo(endpoint))
-                .withHeader("X-Identity", equalTo(BaseEncoding.base16().encode(userKeyPair.getPublic().getEncoded())))
+                .withHeader("X-IdentityDocument", equalTo(BaseEncoding.base16().encode(RequestorTest.userKeyPair.getPublic().getEncoded())))
                 .withHeader("X-Partner-Key", equalTo("partner_ksk_hex"))
                 .withHeader("X-Partner-KeySig", equalTo("partner_ksk_sig_hex"))
                 .willReturn(
@@ -114,7 +93,7 @@ public class RequestorTest {
         try {
             this.setupHttpStubDistributedAccess("/endpoint", RequestMethod.GET, HttpStatusCodes.STATUS_CODE_OK, this.mapper.writeValueAsString(respData));
 
-            NetkiClient client = new NetkiClient("partner_ksk_hex", "partner_ksk_sig_hex", userKeyPair, "http://localhost:9191");
+            NetkiClient client = new NetkiClient("partner_ksk_hex", "partner_ksk_sig_hex", RequestorTest.userKeyPair, "http://localhost:9191");
             Requestor requestor = new Requestor();
             String returnData = requestor.processRequest(client, "/endpoint", "GET", null);
 

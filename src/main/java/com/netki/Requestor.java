@@ -5,7 +5,6 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.security.Security;
 import java.security.Signature;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,7 +16,6 @@ import com.google.common.io.BaseEncoding;
 import org.apache.commons.io.IOUtils;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.spongycastle.jce.provider.BouncyCastleProvider;
 
 /**
  * Make and process HTTP calls to the Netki API
@@ -30,14 +28,14 @@ public class Requestor {
      *
      * Process Netki API request and response
      *
-     * @param nkClient NetkiClient
+     * @param client NetkiClient
      * @param uri Netki Partner URI (i.e., /v1/partner/walletname)
      * @param method HTTP Method
      * @param data POST/PUT Data
      * @return API Response Content
      * @throws Exception Occurs on Bad HTTP Request / Response
      */
-    public String processRequest(NetkiClient nkClient, String uri, String method, String data) throws Exception {
+    public String processRequest(NetkiClient client, String uri, String method, String data) throws Exception {
 
         List<String> supportedMethods = new ArrayList<String>(Arrays.asList("GET", "POST", "PUT", "DELETE"));
         if (!supportedMethods.contains(method)) {
@@ -52,22 +50,30 @@ public class Requestor {
 
         }
 
-        HttpRequest request = requestFactory.buildRequest(method.toUpperCase(), new GenericUrl(nkClient.getApiUrl() + uri), content);
+        HttpRequest request = requestFactory.buildRequest(method.toUpperCase(), new GenericUrl(client.getApiUrl() + uri), content);
 
-        if(nkClient.getApiKey() != null && nkClient.getPartnerId() != null) {
+        // Add Authorization Header if ApiKey exists
+        if(client.getApiKey() != null) {
+            request.getHeaders().set("Authorization", Collections.singletonList(client.getApiKey()));
+        }
 
-            // Traditional PartnerID & API Key
-            request.getHeaders().set("Authorization", Collections.singletonList(nkClient.getApiKey()));
-            request.getHeaders().set("X-Partner-ID", Collections.singletonList(nkClient.getPartnerId()));
+        // Set PartnerID header if partnerId exists
+        if(client.getPartnerId() != null) {
+            request.getHeaders().set("X-Partner-ID", Collections.singletonList(client.getPartnerId()));
+        }
 
-        } else if(nkClient.getPartnerKskHex() != null && nkClient.getPartnerKskSigHex() != null && nkClient.getUserKey() != null) {
+        // Add Partner KSK and KSK-based Signature
+        if(client.getPartnerKskHex() != null && client.getPartnerKskSigHex() != null) {
+            request.getHeaders().set("X-Partner-Key", client.getPartnerKskHex());
+            request.getHeaders().set("X-Partner-KeySig", client.getPartnerKskSigHex());
+        }
 
-            Security.addProvider(new BouncyCastleProvider());
+        // Sign Request if userKey is Present
+        if(client.getUserKey() != null) {
 
-            // Distributed API Access
             byte[] dataByteArray = new byte[0];
             byte[] urlByteArray = request.getUrl().toString().getBytes();
-            if(data != null) {
+            if (data != null) {
                 dataByteArray = data.getBytes();
             }
 
@@ -77,22 +83,16 @@ public class Requestor {
 
             Signature ecdsaSig;
             ecdsaSig = Signature.getInstance("SHA256withECDSA", "SC");
-            ecdsaSig.initSign(nkClient.getUserKey().getPrivate());
+            ecdsaSig.initSign(client.getUserKey().getPrivate());
 
             ecdsaSig.update(sigData);
             byte[] sig = ecdsaSig.sign();
 
-            // Set Header Values
-            String encodedPKString = BaseEncoding.base16().encode(nkClient.getUserKey().getPublic().getEncoded());
+            String encodedPKString = BaseEncoding.base16().encode(client.getUserKey().getPublic().getEncoded());
             String encodedSig = BaseEncoding.base16().encode(sig);
 
-            request.getHeaders().set("X-Partner-Key", nkClient.getPartnerKskHex());
-            request.getHeaders().set("X-Partner-KeySig", nkClient.getPartnerKskSigHex());
-            request.getHeaders().set("X-Identity", encodedPKString);
+            request.getHeaders().set("X-IdentityDocument", encodedPKString);
             request.getHeaders().set("X-Signature", encodedSig);
-
-        } else {
-            throw new Exception("Invalid Access Type Defined");
         }
 
         HttpResponse response = null;

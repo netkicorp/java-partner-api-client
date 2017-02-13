@@ -3,24 +3,24 @@ package com.netki;
 /**
  * Superclass used for all Netki data containers
  */
-public abstract class BaseObject {
+abstract class BaseObject {
 
-    protected NetkiClient nkClient;
+    protected NetkiClient client;
 
     /**
      * Set Object's Associated NetkiClient
-     * @param nkClient NetkiClient
+     * @param client NetkiClient
      */
-    public void setNkClient(NetkiClient nkClient) {
-        this.nkClient = nkClient;
+    void setClient(NetkiClient client) {
+        this.client = client;
     }
 
     /**
      * Get Object's Associated NetkiClient
      * @return NetkiClient
      */
-    public NetkiClient getNkClient() {
-        return nkClient;
+    NetkiClient getClient() {
+        return client;
     }
 
 }

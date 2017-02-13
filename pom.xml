@@ -6,7 +6,7 @@
 
     <groupId>com.netki</groupId>
     <artifactId>netki-partner-client</artifactId>
-    <version>0.0.2</version>
+    <version>0.0.3</version>
 
     <name>Netki Partner Client</name>
     <description>Library used to access Netki's Partner API</description>
