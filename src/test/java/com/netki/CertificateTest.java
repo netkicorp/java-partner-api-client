@@ -208,7 +208,7 @@ public class CertificateTest {
                 any(NetkiClient.class),
                 eq("/v1/certificate/token"),
                 eq("POST"),
-                eq("{\"identity_expiration2\":\"2031-07-12\",\"phone\":\"+18182234567\",\"identity_dl_rta_number2\":\"12345\",\"identity_expiration\":\"2030-01-02\",\"ssn\":\"1234567890\",\"identity_2\":\"P12345678\",\"identity_state2\":\"CA\",\"city\":\"Los Angeles\",\"country\":\"US\",\"product\":\"product_id\",\"identity_type2\":\"passport\",\"first_name\":\"Testy\",\"email\":\"user@domain.com\",\"identity_\":\"12345678\",\"identity_type\":\"drivers licence\",\"postal_code\":\"11111\",\"dob\":\"1980-04-02\",\"last_name\":\"Testerson\",\"identity_state\":\"CA\",\"street_address\":\"123 Main St.\"}")
+                eq("{\"street_address\":\"123 Main St.\",\"country\":\"US\",\"product\":\"product_id\",\"identity_\":\"12345678\",\"city\":\"Los Angeles\",\"last_name\":\"Testerson\",\"identity_state\":\"CA\",\"identity_expiration\":\"2030-01-02\",\"ssn\":\"1234567890\",\"identity_state2\":\"CA\",\"phone\":\"+18182234567\",\"dob\":\"1980-04-02\",\"identity_type2\":\"passport\",\"postal_code\":\"11111\",\"identity_type\":\"drivers licence\",\"first_name\":\"Testy\",\"identity_expiration2\":\"2031-07-12\",\"email\":\"user@domain.com\",\"identity_2\":\"P12345678\",\"identity_dl_rta_number2\":\"12345\"}")
         );
 
         assertEquals("data", cert.getDataToken());
@@ -266,7 +266,7 @@ public class CertificateTest {
                 any(NetkiClient.class),
                 eq("/v1/certificate"),
                 eq("POST"),
-                eq("{\"product\":\"product_id\",\"certdata_token\":\"token\",\"email\":\"user@domain.com\",\"stripe_token\":\"stripe_token\"}")
+                eq("{\"certdata_token\":\"token\",\"product\":\"product_id\",\"stripe_token\":\"stripe_token\",\"email\":\"user@domain.com\"}")
         );
         assertEquals("order_id_value", cert.getId());
     }
@@ -287,7 +287,7 @@ public class CertificateTest {
                 any(NetkiClient.class),
                 eq("/v1/certificate"),
                 eq("POST"),
-                eq("{\"product\":\"product_id\",\"certdata_token\":\"token\",\"email\":\"user@domain.com\"}")
+                eq("{\"certdata_token\":\"token\",\"product\":\"product_id\",\"email\":\"user@domain.com\"}")
         );
         assertEquals("order_id_value", cert.getId());
     }
@@ -314,7 +314,7 @@ public class CertificateTest {
                 any(NetkiClient.class),
                 eq("/v1/certificate"),
                 eq("POST"),
-                eq("{\"product\":\"product_id\",\"certdata_token\":\"token\",\"email\":\"user@domain.com\"}")
+                eq("{\"certdata_token\":\"token\",\"product\":\"product_id\",\"email\":\"user@domain.com\"}")
         );
         assertNull(cert.getId());
     }
